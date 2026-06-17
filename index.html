@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Premio AMMPE World 2026 — Visor 3D</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--gold:#C9A030;--gold2:#E8C96A;--dark:#080D1A}
+body{background:var(--dark);color:#fff;font-family:'DM Sans',sans-serif;overflow:hidden;height:100vh;width:100vw}
+canvas{display:block;position:absolute;inset:0;width:100%!important;height:100%!important}
+
+#header{position:absolute;top:0;left:0;right:0;z-index:10;padding:18px 32px;display:flex;align-items:center;gap:14px;background:linear-gradient(to bottom,rgba(8,13,26,.92) 60%,transparent);pointer-events:none}
+.h-logo{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:700;letter-spacing:3px}
+.h-dot{width:5px;height:5px;border-radius:50%;background:var(--gold);flex-shrink:0}
+.h-sub{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);opacity:.85}
+.h-year{margin-left:auto;font-family:'Cormorant Garamond',serif;font-size:15px;font-style:italic;color:rgba(255,255,255,.35)}
+
+#vi{position:absolute;top:76px;left:32px;z-index:10;pointer-events:none}
+.vi-name{font-family:'Cormorant Garamond',serif;font-size:20px;color:rgba(255,255,255,.75);display:block;line-height:1.2}
+.vi-angle{font-family:'Space Mono',monospace;font-size:9px;color:var(--gold);letter-spacing:2px;display:block;margin-top:4px}
+
+#view-controls{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);z-index:10;display:flex;gap:6px;background:rgba(8,13,26,.88);border:1px solid rgba(201,160,48,.2);border-radius:60px;padding:7px;backdrop-filter:blur(12px)}
+.vbtn{padding:8px 18px;border:none;border-radius:50px;background:transparent;color:rgba(255,255,255,.45);font-family:'Space Mono',monospace;font-size:8.5px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:all .25s;white-space:nowrap}
+.vbtn:hover{color:#fff;background:rgba(201,160,48,.12)}
+.vbtn.active{background:var(--gold);color:#1A1008;font-weight:700}
+#hint{position:absolute;bottom:82px;left:50%;transform:translateX(-50%);z-index:10;display:flex;gap:22px;font-family:'Space Mono',monospace;font-size:8px;color:rgba(255,255,255,.2);pointer-events:none;white-space:nowrap}
+
+#info-panel{position:absolute;top:0;right:0;width:370px;height:100%;z-index:10;background:rgba(8,13,26,.95);border-left:1px solid rgba(201,160,48,.18);backdrop-filter:blur(20px);transform:translateX(100%);transition:transform .42s cubic-bezier(.4,0,.2,1);overflow-y:auto;padding:70px 0 130px}
+#info-panel.open{transform:translateX(0)}
+#info-panel::-webkit-scrollbar{width:3px}
+#info-panel::-webkit-scrollbar-thumb{background:rgba(201,160,48,.3);border-radius:2px}
+.ip-topbar{height:3px;background:linear-gradient(to right,var(--gold2),var(--gold))}
+#info-close{position:absolute;top:16px;right:16px;width:32px;height:32px;border:1px solid rgba(255,255,255,.1);border-radius:50%;background:transparent;color:rgba(255,255,255,.4);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;z-index:3}
+#info-close:hover{background:rgba(255,255,255,.1);color:#fff}
+.ip-inner{padding:0 28px}
+.ip-kicker{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin:26px 0 6px;display:flex;align-items:center;gap:8px}
+.ip-kicker::before{content:'';width:14px;height:1px;background:var(--gold)}
+.ip-title{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#fff;line-height:1.1;margin-bottom:4px}
+.ip-angle{font-family:'Space Mono',monospace;font-size:9px;color:rgba(255,255,255,.35);letter-spacing:1px;margin-bottom:14px}
+.ip-badge{display:inline-block;padding:4px 12px;border:1px solid rgba(201,160,48,.45);border-radius:2px;font-family:'Space Mono',monospace;font-size:7.5px;letter-spacing:1px;text-transform:uppercase;color:var(--gold);margin-bottom:20px}
+.ip-divider{height:1px;background:rgba(255,255,255,.07);margin:18px 0}
+.sg{margin-bottom:18px}
+.sg-title{font-family:'Space Mono',monospace;font-size:7.5px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid rgba(201,160,48,.15)}
+.si{display:flex;gap:10px;margin-bottom:8px;align-items:flex-start}
+.sd{width:5px;height:5px;border-radius:50%;background:var(--gold);flex-shrink:0;margin-top:7px}
+.st{font-size:12.5px;color:rgba(255,255,255,.6);line-height:1.65}
+.st strong{color:#fff;font-weight:600}
+.st em{color:rgba(255,255,255,.35);font-style:italic}
+#info-toggle{position:absolute;top:50%;right:0;transform:translateY(-50%);z-index:11;background:rgba(8,13,26,.85);border:1px solid rgba(201,160,48,.25);border-right:none;border-radius:6px 0 0 6px;padding:12px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px}
+#info-toggle:hover{background:rgba(201,160,48,.15)}
+#info-toggle span{font-family:'Space Mono',monospace;font-size:7px;letter-spacing:1px;text-transform:uppercase;color:var(--gold);writing-mode:vertical-rl;transform:rotate(180deg)}
+
+#loading{position:fixed;inset:0;z-index:100;background:var(--dark);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;transition:opacity .7s}
+#loading.fade{opacity:0;pointer-events:none}
+.ld-logo{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:700;letter-spacing:4px}
+.ld-sub{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);opacity:.75}
+.ld-row{display:flex;align-items:center;gap:12px;margin-top:6px}
+.ld-bar{width:220px;height:2px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden}
+.ld-fill{height:100%;background:linear-gradient(to right,var(--gold2),var(--gold));border-radius:2px;width:0%;transition:width .4s}
+.ld-pct{font-family:'Space Mono',monospace;font-size:12px;color:var(--gold);min-width:42px}
+#ld-msg{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:1.5px;color:rgba(255,255,255,.28);min-height:16px}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="ld-logo">AMMPE WORLD</div>
+  <div class="ld-sub">Cargando modelo 3D&hellip;</div>
+  <div class="ld-row">
+    <div class="ld-bar"><div class="ld-fill" id="ld-fill"></div></div>
+    <div class="ld-pct" id="ld-pct">0%</div>
+  </div>
+  <div id="ld-msg">Iniciando&hellip;</div>
+</div>
+
+<canvas id="three-canvas"></canvas>
+
+<div id="header">
+  <div class="h-logo">AMMPE WORLD</div>
+  <div class="h-dot"></div>
+  <div class="h-sub">Premio Internacional &middot; Mujer Periodista y Escritora</div>
+  <div class="h-year">2026</div>
+</div>
+
+<div id="vi">
+  <span class="vi-name" id="vi-name">Vista Tres Cuartos</span>
+  <span class="vi-angle" id="vi-angle">45° frontal derecho · Referencia</span>
+</div>
+
+<div id="info-panel">
+  <div class="ip-topbar"></div>
+  <button id="info-close">&times;</button>
+  <div class="ip-inner" id="ip-inner"></div>
+</div>
+
+<button id="info-toggle">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--gold)" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+  <span>Specs</span>
+</button>
+
+<div id="view-controls">
+  <button class="vbtn" data-view="frontal">Frontal</button>
+  <button class="vbtn" data-view="trasera">Trasera</button>
+  <button class="vbtn" data-view="lat-izq">Lat. Izq.</button>
+  <button class="vbtn" data-view="lat-der">Lat. Der.</button>
+  <button class="vbtn" data-view="superior">Superior</button>
+  <button class="vbtn active" data-view="tres-cuartos">Tres Cuartos</button>
+</div>
+
+<div id="hint">
+  <span>&#x1F5B1; Arrastra para rotar</span>
+  <span>&#x1F50D; Scroll para zoom</span>
+</div>
+
+<!-- Datos embebidos (generado automáticamente) -->
+<script src="trophy_data.js"></script>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls }    from 'three/addons/controls/OrbitControls.js';
+import { FBXLoader }        from 'three/addons/loaders/FBXLoader.js';
+import { RoomEnvironment }  from 'three/addons/environments/RoomEnvironment.js';
+
+// ─── VIEWS DATA ──────────────────────────────────────────────────────────────
+const VIEWS = {
+  'frontal':      { name:'Vista Frontal',           angle:'0° · Eje Y',                       badge:'Principal · Requerida',               theta:0,          phi:Math.PI/2   },
+  'trasera':      { name:'Vista Trasera',            angle:'180° · Eje Y invertido',            badge:'Requerida',                           theta:Math.PI,    phi:Math.PI/2   },
+  'lat-izq':      { name:'Vista Lateral Izquierda',  angle:'90° izquierda · Eje X',             badge:'Requerida',                           theta:-Math.PI/2, phi:Math.PI/2   },
+  'lat-der':      { name:'Vista Lateral Derecha',    angle:'90° derecha · Eje X',               badge:'⭐ Vista más informativa',             theta:Math.PI/2,  phi:Math.PI/2   },
+  'superior':     { name:'Vista Superior',           angle:'Top view · 90° vertical · Eje Z',   badge:'Adicional requerida por fabricante',   theta:0.1,        phi:0.06        },
+  'tres-cuartos': { name:'Vista Tres Cuartos',       angle:'45° frontal derecho · Referencia',  badge:'Vista de la imagen de referencia',     theta:Math.PI/4,  phi:Math.PI/3.2 },
+};
+const SPECS = {
+  'frontal':     [
+    {title:'Dimensiones Generales',items:[
+      '<strong>Altura total:</strong> 35 cm — desde la base del mármol hasta el polo norte del globo.',
+      '<strong>Ancho máximo (Eje X):</strong> ~12 cm — determinado por el diámetro de la base inferior de mármol.',
+      '<strong>Profundidad (Eje Z):</strong> ~12 cm — la base es perfectamente cilíndrica.',
+    ]},
+    {title:'Zona superior — Globo Terráqueo <em>28.5% · Ø 10 cm</em>',items:[
+      '<strong>Esfera perfecta</strong> suspendida con relieve de continentes extruidos hacia afuera <strong>+1.5 mm</strong>. <em>África y las Américas visibles desde el frente.</em>',
+      '<strong>Bicolor:</strong> fondo bronce oscuro. Relieves de continentes en dorado brillante.',
+      'Ecuador y meridianos grabados como ranuras finas.',
+    ]},
+    {title:'Figura Femenina Central <em>51.5% · 18 cm</em>',items:[
+      '<strong>Posición:</strong> de pie, erguida, de frente. Brazos completamente extendidos sosteniendo el globo.',
+      '<strong>Altura:</strong> 18 cm medidos desde la parte superior del libro abierto hasta las manos alzadas. Punto más ancho (hombros/brazos): ~6.5 cm.',
+      '<strong>Vestido:</strong> drapeado estilo clásico grecorromano. Vuelo amplio en la parte inferior.',
+      '<strong>Pluma de escritura</strong> integrada, diagonal, desde la cadera hasta el libro. Grosor máximo: <strong>3 mm.</strong>',
+      'Acabado completo en <strong>dorado brillante.</strong>',
+    ]},
+    {title:'Base — Libro, Pedestal y Mármol',items:[
+      '<strong>Libro abierto</strong> como zócalo/piso de la figura. Hojas caídas a ambos lados con texturas; lomo central definido.',
+      '<strong>Pedestal dorado:</strong> 5.7% · 2 cm de alto. Cilindro de transición con <strong>moldura cóncava clásica y grecas grabadas.</strong>',
+      '<strong>Placa frontal dorada</strong> 7 × 5 cm, curva para adaptarse a la redondez del pedestal. Texto en 4 líneas. <strong>Pluma decorativa superpuesta</strong> en esquina inferior derecha (rompe el borde del rectángulo).',
+      '<strong>Base de mármol negro:</strong> 14.3% · 5 cm total — cuello superior ~3.8 cm + escalón inferior ~1.2 cm.',
+    ]},
+  ],
+  'trasera':     [
+    {title:'Diferencias Clave vs. Vista Frontal',items:[
+      '<strong>Globo:</strong> Asia, Oceanía y Pacífico visibles desde este ángulo.',
+      '<strong>Cabeza:</strong> nuca y cabello recogido hacia arriba.',
+      '<strong>Espalda:</strong> pliegues del vestido más simples. Sin placa en esta vista.',
+      '<strong>Base trasera:</strong> superficie lisa de mármol negro.',
+    ]},
+    {title:'Instrucción al Modelista',items:[
+      'Definir si la pluma es elemento <strong>3D completo</strong> o solo frontal. Se recomienda 3D completo para solidez en fundición.',
+      '<strong>Peso estimado pieza física:</strong> 1.5–2.5 kg bajo Opción B recomendada (Zamac de alta densidad + base de mármol).',
+    ]},
+  ],
+  'lat-izq':     [
+    {title:'Perfil Izquierdo — Características',items:[
+      '<strong>Profundidad del globo:</strong> esfera completa (Ø 10 cm). Brazo izquierdo en primer plano.',
+      '<strong>Silueta:</strong> curvatura natural del cuerpo. Vestido con vuelo creando profundidad.',
+      '<strong>Profundidad estimada del vestido:</strong> 8–12 cm en la parte más amplia.',
+      '<strong>Pluma:</strong> puede estar oculta desde este ángulo — su trayectoria es diagonal hacia el frente derecho.',
+    ]},
+    {title:'Base desde el Lateral',items:[
+      '<strong>Libro:</strong> lomo encuadernado visible. Forma rectangular baja.',
+      '<strong>Placa:</strong> solo el grosor (3–5 mm). Texto no legible desde aquí. Curvatura adaptada al mármol.',
+      '<strong>Base mármol:</strong> escalonado claramente visible — cuello 3.8 cm + escalón 1.2 cm.',
+    ]},
+  ],
+  'lat-der':     [
+    {title:'Vista Crítica — La Pluma en Extensión',items:[
+      'El lateral derecho es <strong>crítico</strong>: muestra la <strong>pluma de escritura en toda su extensión diagonal.</strong>',
+      'La pluma nace a la altura de la cadera y muere diagonalmente justo donde el vestido toca el libro abierto.',
+      '<strong>Pluma de la placa:</strong> segunda pluma decorativa en esquina inferior derecha, también visible desde aquí.',
+    ]},
+    {title:'Detalles de la Pluma Principal',items:[
+      '<strong>Forma:</strong> cálamo recto curvado hacia la punta. Barbas filiformes a ambos lados.',
+      '<strong>Longitud:</strong> aprox. 1/3 de la altura total de la figura (~6 cm).',
+      '<strong>Grosor máximo:</strong> 3 mm — para no desestabilizar la silueta. Integrada al muslo/falda derecha.',
+      '<strong>Anclaje:</strong> a la altura de la cadera derecha, integrada a la escultura.',
+      '<strong>Acabado:</strong> dorado igual que el resto.',
+    ]},
+    {title:'Integridad Estructural — Brazos',items:[
+      'Los brazos verticales que sostienen el globo son la zona más delicada estructuralmente.',
+      '<strong>Diámetro mínimo en sección más delgada: 8 mm</strong> — requisito para evitar fracturas en fundición de metal o impresión en resina.',
+    ]},
+  ],
+  'superior':    [
+    {title:'Globo — Lo Visible desde Arriba',items:[
+      '<strong>El globo domina completamente.</strong> La esfera (Ø 10 cm) ocupa casi toda la vista.',
+      'Continentes extruidos <strong>+1.5 mm</strong> sobre la superficie esférica. Ecuador como ranura perimetral.',
+      'Las manos asoman a los lados del globo como pequeños volúmenes.',
+      'La cabeza de la figura es parcialmente visible por debajo del ecuador.',
+      'El cuerpo, vestido y base son <strong>completamente invisibles</strong> desde esta perspectiva.',
+    ]},
+    {title:'Utilidad para el Fabricante',items:[
+      'Permite verificar la <strong>simetría bilateral</strong> de los brazos y manos.',
+      'Confirma que el <strong>diámetro del globo (Ø 10 cm)</strong> es correcto respecto al ancho total de brazos (~12 cm).',
+    ]},
+  ],
+  'tres-cuartos':[
+    {title:'Vista Más Importante para el Fabricante',items:[
+      'Muestra <strong>simultáneamente</strong> profundidad, frente y lateral de la pieza.',
+      'Confirma que la figura tiene <strong>volumen real</strong> y no es un relieve plano.',
+      'La pluma aparece en <strong>toda su extensión diagonal</strong> con el cuerpo al fondo.',
+      'Placa y pluma decorativa son <strong>simultáneamente visibles</strong> con el conjunto base.',
+      'Permite verificar la <strong>proporción entre figura (18 cm) y base (7 cm)</strong> de forma realista.',
+    ]},
+    {title:'Proporciones de Referencia',items:[
+      '<strong>Globo:</strong> Ø 10 cm (28.5% de H) · <strong>Figura:</strong> 18 cm (51.5%) · <strong>Pedestal:</strong> 2 cm (5.7%) · <strong>Mármol:</strong> 5 cm (14.3%)',
+      'Ancho máximo en hombros/brazos de la figura: ~6.5 cm.',
+      '<strong>Brazos:</strong> diámetro mínimo 8 mm en la sección más delgada (requisito de fabricación).',
+    ]},
+    {title:'Nota de Producción',items:[
+      'La imagen de referencia del cliente <strong>ya es esta vista tres cuartos.</strong> Es la referencia visual principal.',
+      'Las otras 5 vistas son inferencias técnicas basadas en esta imagen frontal-diagonal.',
+      '<strong>Peso estimado final:</strong> 1.5–2.5 kg — Opción B recomendada: Zamac de alta densidad + base de mármol natural.',
+    ]},
+  ],
+};
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function setP(pct, msg) {
+  document.getElementById('ld-fill').style.width = pct+'%';
+  document.getElementById('ld-pct').textContent  = pct+'%';
+  if (msg) document.getElementById('ld-msg').textContent = msg;
+}
+
+function b64toURL(b64, mime) {
+  const bin = atob(b64);
+  const buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  return URL.createObjectURL(new Blob([buf], { type: mime }));
+}
+
+// ─── SCENE ───────────────────────────────────────────────────────────────────
+setP(5, 'Decodificando archivos…');
+
+const data = window.TROPHY_DATA;
+const modelURL = b64toURL(data.fbx,      'application/octet-stream');
+const texURLs  = {
+  diffuse:    b64toURL(data.diffuse,   'image/png'),
+  normal:     b64toURL(data.normal,    'image/png'),
+  roughness:  b64toURL(data.roughness, 'image/png'),
+  metallic:   b64toURL(data.metallic,  'image/png'),
+};
+setP(12, 'Iniciando escena 3D…');
+
+const canvas   = document.getElementById('three-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, powerPreference:'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled   = true;
+renderer.shadowMap.type      = THREE.PCFSoftShadowMap;
+renderer.toneMapping         = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.4;
+renderer.outputColorSpace    = THREE.SRGBColorSpace;
+
+const scene  = new THREE.Scene();
+scene.background = new THREE.Color(0x060A14);
+scene.fog = new THREE.FogExp2(0x060A14, 0.003);
+
+// Environment map for realistic PBR reflections
+const pmrem  = new THREE.PMREMGenerator(renderer);
+pmrem.compileEquirectangularShader();
+const envTex = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+scene.environment = envTex;
+
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.01, 2000);
+camera.position.set(2, 1.5, 3.5);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping    = true;
+controls.dampingFactor    = 0.06;
+controls.minDistance      = 0.4;
+controls.maxDistance      = 14;
+controls.autoRotate       = true;
+controls.autoRotateSpeed  = 0.5;
+controls.addEventListener('start', () => { controls.autoRotate = false; animating = false; });
+
+// ─── LIGHTING (subida) ───────────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0xFFEEC0, 1.2));
+
+const key = new THREE.DirectionalLight(0xFFE080, 4.0);
+key.position.set(3, 6, 4);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.left = key.shadow.camera.bottom = -3;
+key.shadow.camera.right = key.shadow.camera.top   =  3;
+scene.add(key);
+
+const fill = new THREE.DirectionalLight(0xA0BBFF, 1.0);
+fill.position.set(-5, 4, 2);
+scene.add(fill);
+
+const rim = new THREE.DirectionalLight(0xFFBB40, 1.5);
+rim.position.set(1, 3, -6);
+scene.add(rim);
+
+const top = new THREE.DirectionalLight(0xFFFFFF, 0.8);
+top.position.set(0, 10, 0);
+scene.add(top);
+
+const front = new THREE.PointLight(0xFFDD88, 1.2, 10);
+front.position.set(0, 1, 3);
+scene.add(front);
+
+const bot = new THREE.PointLight(0xC9A030, 0.8, 6);
+bot.position.set(0, -0.3, 1);
+scene.add(bot);
+
+// Ground reflection disc
+const ground = new THREE.Mesh(
+  new THREE.CircleGeometry(4, 64),
+  new THREE.MeshStandardMaterial({ color:0x08060E, metalness:0.5, roughness:0.7, transparent:true, opacity:0.55 })
+);
+ground.rotation.x = -Math.PI/2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// ─── RENDER LOOP ─────────────────────────────────────────────────────────────
+let animating = false;
+const animFrom = { pos: new THREE.Vector3(), tgt: new THREE.Vector3() };
+const animTo   = { pos: new THREE.Vector3(), tgt: new THREE.Vector3() };
+let animT = 0;
+const ANIM_DUR = 80;
+
+function easeIO(t){ return t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2; }
+
+function tickAnim(){
+  if (!animating) return;
+  animT++;
+  const e = easeIO(Math.min(animT/ANIM_DUR, 1));
+  camera.position.lerpVectors(animFrom.pos, animTo.pos, e);
+  controls.target.lerpVectors(animFrom.tgt, animTo.tgt, e);
+  if (animT >= ANIM_DUR) {
+    animating = false;
+    setTimeout(() => controls.autoRotate = true, 1800);
+  }
+}
+
+(function loop(){ requestAnimationFrame(loop); tickAnim(); controls.update(); renderer.render(scene, camera); })();
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ─── MODEL LOAD ──────────────────────────────────────────────────────────────
+setP(18, 'Cargando texturas…');
+const tl = new THREE.TextureLoader();
+function loadTex(url, srgb){ const t=tl.load(url); if(srgb) t.colorSpace=THREE.SRGBColorSpace; return t; }
+
+const tex = {
+  diffuse:   loadTex(texURLs.diffuse,   true),
+  normal:    loadTex(texURLs.normal,    false),
+  roughness: loadTex(texURLs.roughness, false),
+  metallic:  loadTex(texURLs.metallic,  false),
+};
+
+setP(28, 'Cargando modelo FBX…');
+
+const fbxLoader = new FBXLoader();
+fbxLoader.load(
+  modelURL,
+  (obj) => {
+    setP(88, 'Aplicando materiales PBR…');
+
+    const mat = new THREE.MeshStandardMaterial({
+      map:          tex.diffuse,
+      normalMap:    tex.normal,
+      roughnessMap: tex.roughness,
+      metalnessMap: tex.metallic,
+      metalness:    1.0,
+      roughness:    1.0,
+      envMapIntensity: 1.8,
+    });
+
+    obj.traverse(child => {
+      if (!child.isMesh) return;
+      child.castShadow = child.receiveShadow = true;
+      child.material = mat;
+    });
+
+    // Center + scale to ~2 units tall
+    const box    = new THREE.Box3().setFromObject(obj);
+    const size   = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const s      = 2.0 / Math.max(size.x, size.y, size.z);
+    obj.scale.setScalar(s);
+    obj.position.set(-center.x*s, -box.min.y*s, -center.z*s);
+    scene.add(obj);
+
+    // Recompute bounds
+    const box2   = new THREE.Box3().setFromObject(obj);
+    const sphere = box2.getBoundingSphere(new THREE.Sphere());
+    const mC     = sphere.center;
+    const mR     = sphere.radius;
+
+    controls.target.copy(mC);
+
+    // Build presets
+    const viewPresets = {};
+    const dist = mR * 2.8;
+    Object.entries(VIEWS).forEach(([id, v]) => {
+      viewPresets[id] = {
+        camPos: new THREE.Vector3(
+          mC.x + dist * Math.sin(v.phi) * Math.sin(v.theta),
+          mC.y + dist * Math.cos(v.phi),
+          mC.z + dist * Math.sin(v.phi) * Math.cos(v.theta)
+        ),
+        target: mC.clone(),
+      };
+    });
+    viewPresets['superior'] = {
+      camPos: new THREE.Vector3(mC.x+0.05, mC.y+mR*3.5, mC.z+mR*0.2),
+      target: new THREE.Vector3(mC.x, mC.y+mR*0.3, mC.z),
+    };
+
+    function goToView(id, animate=true) {
+      const p = viewPresets[id]; if (!p) return;
+      if (!animate) { camera.position.copy(p.camPos); controls.target.copy(p.target); controls.update(); return; }
+      animFrom.pos.copy(camera.position); animFrom.tgt.copy(controls.target);
+      animTo.pos.copy(p.camPos);          animTo.tgt.copy(p.target);
+      animT = 0; animating = true;
+    }
+
+    // Go to initial view
+    goToView('tres-cuartos', false);
+    controls.update();
+
+    // Revoke blob URLs
+    URL.revokeObjectURL(modelURL);
+    Object.values(texURLs).forEach(u => URL.revokeObjectURL(u));
+
+    setP(100, '¡Listo!');
+    setTimeout(() => {
+      document.getElementById('loading').classList.add('fade');
+      renderInfo('tres-cuartos');
+      setTimeout(() => {
+        document.getElementById('info-panel').classList.add('open');
+        document.getElementById('info-toggle').style.display = 'none';
+      }, 500);
+    }, 400);
+
+    // View buttons
+    document.querySelectorAll('.vbtn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.view;
+        document.querySelectorAll('.vbtn').forEach(b => b.classList.toggle('active', b.dataset.view===id));
+        const v = VIEWS[id];
+        document.getElementById('vi-name').textContent  = v.name;
+        document.getElementById('vi-angle').textContent = v.angle;
+        goToView(id, true);
+        renderInfo(id);
+        controls.autoRotate = false;
+      });
+    });
+  },
+  xhr => {
+    if (xhr.total > 0) setP(28 + Math.round(xhr.loaded/xhr.total*55), `Cargando FBX… ${Math.round(xhr.loaded/1024/1024,1)}MB`);
+  },
+  err => {
+    document.getElementById('ld-msg').textContent = '⚠ Error al cargar modelo';
+    console.error(err);
+  }
+);
+
+// ─── INFO PANEL ──────────────────────────────────────────────────────────────
+function renderInfo(id) {
+  const v = VIEWS[id]; const groups = SPECS[id] || [];
+  let html = `<div class="ip-kicker">${v.name}</div><div class="ip-title">${v.name}</div><div class="ip-angle">${v.angle}</div><div class="ip-badge">${v.badge}</div><div class="ip-divider"></div>`;
+  groups.forEach(g => {
+    html += `<div class="sg"><div class="sg-title">${g.title}</div>`;
+    g.items.forEach(t => { html += `<div class="si"><div class="sd"></div><div class="st">${t}</div></div>`; });
+    html += '</div>';
+  });
+  document.getElementById('ip-inner').innerHTML = html;
+}
+
+document.getElementById('info-close').addEventListener('click', () => {
+  document.getElementById('info-panel').classList.remove('open');
+  document.getElementById('info-toggle').style.display = 'flex';
+});
+document.getElementById('info-toggle').addEventListener('click', () => {
+  document.getElementById('info-panel').classList.add('open');
+  document.getElementById('info-toggle').style.display = 'none';
+});
+</script>
+</body>
+</html>
